@@ -28,7 +28,10 @@ string raw_template[9] = {
     "678912345"
 };
 
-void SudokuSolved(char* path);
+int output[200000000];          //缓存数独终局
+
+void WriteInFile();             //向文件中一次写入
+void SudokuSolved(char* path);  //生成终局函数
 void SudokuGenerate(int Num);
 
 
@@ -78,10 +81,10 @@ int main(int argc, char* argv[]) {
     int num;
     cin >> num;
     start = clock();
-    remove("sudoku.txt");
     SudokuGenerate(num);
+    WriteInFile();
     finish = clock();
-    cout << "time = " << double(finish - start) / CLOCKS_PER_SEC << "s" << endl;
+    cout << "time = " << double((double)finish - (double)start) / CLOCKS_PER_SEC << "s" << endl;
     return 0;
 }
 
@@ -91,15 +94,13 @@ void SudokuSolved(char* path) {
 }
 
 void SudokuGenerate(int Num) {
-    ofstream context;
-    context.open("sudoku.txt", ios::app);
-    int array[] = { 2,1,3,4,5,6,7,8,9 };
-    int order[] = { 0,1,2,3,4,5,6,7,8 };
-    int trans[9];
-    int new_row[9][9];
-    int temp_point = 0;
+    long count = 0;
+    int array[] = { 2,1,3,4,5,6,7,8,9 };    //初始数字组合顺序排列，方便之后的数字排列组合
+    int order[] = { 0,1,2,3,4,5,6,7,8 };    //行数
+    int trans[9];                           //交换数组
+    int new_row[9][9];                      //新生成的数独矩阵                         
 
-    do {
+    do {                                                  //除了初始第一行第一列的数字，其他数字两两交换排列组合
         for (int i = 0; i < 9; i++) {
             trans[raw_template[0][i] - 49] = array[i];
         }
@@ -108,21 +109,22 @@ void SudokuGenerate(int Num) {
                 new_row[i][j] = trans[raw_template[i][j] - 49];
             }
         }
-        for (int i = 0; i < 2 && Num; i++) {
-            for (int j = 0; j < 6 && Num; j++) {
-                for (int k = 0; k < 6 && Num; k++) {
+        for (int i = 0; i < 2 && Num; i++) {                //2到3行两两交换
+            for (int j = 0; j < 6 && Num; j++) {            //4到6行两两交换
+                for (int k = 0; k < 6 && Num; k++) {        //7到9行两两交换
                     for (int l = 0; l < 9; l++) {
                         for (int m = 0; m < 8; m++) {
-                            context << new_row[order[l]][m] << ' ';
+                            output[count++] = new_row[order[l]][m];
+                            output[count++] = ' ';
                         }
-                        context << new_row[order[l]][8];
-                        if (l != 8) context << '\n';
+                        output[count++] = new_row[order[l]][8];
+                        if (l != 8) output[count++] = '\n';
                     }
                     if (--Num) {
-                        context << '\n' << '\n';
+                        output[count++] = '\n';
+                        output[count++] = '\n';
                     }
                     else {
-                        context.close();
                         return;
                     }
                     next_permutation(order + 6, order + 9);
@@ -132,7 +134,13 @@ void SudokuGenerate(int Num) {
             next_permutation(order + 1, order + 3);
         }
     } while (next_permutation(array + 1, array + 9));
-    context.close();
+    return;
+}
+
+void WriteInFile() {
+    remove("sudoku.txt");
+    ofstream WriteFile("sudoku.txt");
+    WriteFile << output;
     return;
 }
 
