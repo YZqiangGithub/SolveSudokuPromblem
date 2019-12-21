@@ -15,7 +15,7 @@
 
 using namespace std;
 
-//(7 + 3)%9 + 1 = 2 ,初始模板左上第一个数字为2
+//  1120172173  =>  (7 + 3)%9 + 1 = 2 ,初始模板左上第一个数字为2
 string raw_template[9] = {
     "234567891",
     "891234567",
@@ -55,7 +55,7 @@ int GetMax(int row_num, int col_num, int block_num);
 
 
 int main(int argc, char* argv[]) {
-    /*
+
     if (argc != 3) {
         cout << "there are some worng in cmd params" << endl;
         exit(1);
@@ -79,8 +79,10 @@ int main(int argc, char* argv[]) {
             if (argv[2][0] == '-') {
                 num *= -1;
             }
+
             if (num > 0 && num <= 1e6) {
                 SudokuGenerate(num);
+                WriteIntoFile();
             }
             else {
                 cout << "error in number of solution, num should bigger than 0 and smaller than 1e6" << endl;
@@ -96,20 +98,7 @@ int main(int argc, char* argv[]) {
             exit(1);
         }
     }
-    */
 
-
-
-    clock_t start, finish;
-    string path;
-    char Str[20];
-    cin >> Str;
-    path = Str;
-    start = clock();
-    //    SudokuGenerate(num);
-    SudokuSolved(path);
-    finish = clock();
-    cout << "time = " << double((double)finish - (double)start) / CLOCKS_PER_SEC << "s" << endl;
     return 0;
 }
 
@@ -206,15 +195,13 @@ void SudokuGenerate(int Num) {
             for (int j = 0; j < 6 && Num; j++) {            //4到6行两两交换
                 for (int k = 0; k < 6 && Num; k++) {        //7到9行两两交换
                     for (int l = 0; l < 9; l++) {
-                        for (int m = 0; m < 8; m++) {
+                        for (int m = 0; m < 9; m++) {
                             output[count++] = new_row[order[l]][m] + '0';
-                            output[count++] = ' ';
+                            if (m != 8) output[count++] = ' ';
+                            else  output[count++] = '\n';
                         }
-                        output[count++] = new_row[order[l]][8];
-                        if (l != 8) output[count++] = '\n';
                     }
                     if (--Num) {
-                        output[count++] = '\n';
                         output[count++] = '\n';
                     }
                     else {
@@ -227,8 +214,6 @@ void SudokuGenerate(int Num) {
             next_permutation(order + 1, order + 3);
         }
     } while (next_permutation(array + 1, array + 9));
-
-    WriteIntoFile();
     return;
 }
 
