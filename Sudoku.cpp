@@ -28,11 +28,30 @@ string raw_template[9] = {
     "678912345"
 };
 
-int output[200000000];          //缓存数独终局
 
-void WriteInFile();             //向文件中一次写入
-void SudokuSolved(char* path);  //生成终局函数
-void SudokuGenerate(int Num);
+char output[200000000];          //缓存数独终局
+int input[200000000];           //缓存输入数独问题
+int sudoku_ques[9][9];        //待解决数独问题
+int mark_row[9][9];
+int mark_col[9][9];
+int mark_block[9][9];
+int blank_num = 0;
+int blank[100][3];       //二维数组的三个元素为空白格的行，列和所属小宫格的已填入格数与所属行列已填入最大格数
+int row[9], col[9], block[9];  //纪录非空白格数量
+
+
+
+
+void WriteIntoFile();                                   //向文件中一次写入
+void SudokuSolved(string path);                          //解数独问题
+void SudokuGenerate(int Num);                           //生成终局函数
+inline int  GetBlockNum(int row, int col);
+void SetMark(int row, int col, int n, int mark);
+void Swap(int* a, int* b);
+bool DFS(int depth);
+void Reset();
+int GetMax(int row_num, int col_num, int block_num);
+
 
 
 int main(int argc, char* argv[]) {
@@ -68,7 +87,9 @@ int main(int argc, char* argv[]) {
             }
         }
         else if (!strcmp(argv[1], "-s")) {
-            SudokuSolved(argv[2]);
+            string path;
+            path = argv[2];
+            SudokuSolved(path);
         }
         else {
             cout << "error cmd params" << endl;
@@ -77,21 +98,93 @@ int main(int argc, char* argv[]) {
     }
     */
 
+
+
     clock_t start, finish;
-    int num;
-    cin >> num;
+    string path;
+    char Str[20];
+    cin >> Str;
+    path = Str;
     start = clock();
-    SudokuGenerate(num);
-    WriteInFile();
+    //    SudokuGenerate(num);
+    SudokuSolved(path);
     finish = clock();
     cout << "time = " << double((double)finish - (double)start) / CLOCKS_PER_SEC << "s" << endl;
     return 0;
 }
 
-void SudokuSolved(char* path) {
+void SudokuSolved(string path) {
+    ifstream ReadFile(path);
+    if (!ReadFile.is_open()) {
+        printf("There is an error in opening the file!\n");
+        exit(1);
+    }
+    int count = 0;
+    while (!ReadFile.eof())
+    {
+        ReadFile >> input[count++];
+    }
+    ReadFile.close();
+    int input_count = 0, output_count = 0;
 
+    while (input[input_count])
+    {
+        //将数据填入，记下标记
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                sudoku_ques[i][j] = input[input_count++];
+
+                if (!sudoku_ques[i][j]) {
+                    blank[blank_num][0] = i;
+                    blank[blank_num][1] = j;
+                    blank_num++;
+                }
+                else
+                {
+                    SetMark(i, j, sudoku_ques[i][j], 1);
+                    row[i]++;
+                    col[j]++;
+                    block[GetBlockNum(i, j)]++;
+                }
+            }
+        }
+        //计算空白格所在行列块的已填入数最大格数
+        for (int i = 0; i < blank_num; i++) {
+            int temp_row = blank[i][0], temp_col = blank[i][1];
+            blank[i][2] = GetMax(row[temp_row], col[temp_col], block[GetBlockNum(temp_row, temp_col)]);
+        }
+        //对空白格记录的按从大到小排序
+        for (int i = 0; i < blank_num; i++) {
+            int m = i;
+            for (int j = i; j < blank_num - 1; j++) {
+                if (blank[m][2] < blank[j + 1][2]) m = j + 1;
+            }
+            Swap(blank[i], blank[m]);
+        }
+
+        if (DFS(0)) {
+            for (int i = 0; i < 9; i++) {
+                for (int j = 0; j < 9; j++) {
+                    output[output_count++] = sudoku_ques[i][j] + '0';
+                    if (j == 8) {
+                        output[output_count++] = '\n';
+                    }
+                    else
+                    {
+                        output[output_count++] = ' ';
+                    }
+                }
+            }
+            output[output_count++] = '\n';
+
+        }
+        Reset();
+    }
+    WriteIntoFile();
     return;
 }
+
+
 
 void SudokuGenerate(int Num) {
     long count = 0;
@@ -114,7 +207,7 @@ void SudokuGenerate(int Num) {
                 for (int k = 0; k < 6 && Num; k++) {        //7到9行两两交换
                     for (int l = 0; l < 9; l++) {
                         for (int m = 0; m < 8; m++) {
-                            output[count++] = new_row[order[l]][m];
+                            output[count++] = new_row[order[l]][m] + '0';
                             output[count++] = ' ';
                         }
                         output[count++] = new_row[order[l]][8];
@@ -134,16 +227,87 @@ void SudokuGenerate(int Num) {
             next_permutation(order + 1, order + 3);
         }
     } while (next_permutation(array + 1, array + 9));
+
+    WriteIntoFile();
     return;
 }
 
-void WriteInFile() {
+void WriteIntoFile() {
     remove("sudoku.txt");
     ofstream WriteFile("sudoku.txt");
     WriteFile << output;
     return;
 }
 
+void SetMark(int row, int col, int n, int mark)
+{
+    mark_row[row][n - 1] = mark;
+    mark_col[col][n - 1] = mark;
+    mark_block[GetBlockNum(row, col)][n - 1] = mark;
+    return;
+}
+
+void Reset()
+{
+    for (int i = 0; i < 9; i++) {
+        for (int j = 0; j < 9; j++) {
+            mark_row[i][j] = mark_col[i][j] = mark_block[i][j] = sudoku_ques[i][j] = 0;
+        }
+        row[i] = col[i] = block[i] = 0;
+    }
+    blank_num = 0;
+    for (int i = 0; i < 100; i++) {
+        blank[i][0] = blank[i][1] = blank[i][2] = 0;
+    }
+    return;
+}
+
+
+bool DFS(int depth)
+{
+    if (depth == blank_num) {
+        return true;
+    }
+
+    int row = blank[depth][0], col = blank[depth][1];
+    for (int i = 0; i < 9; i++) {
+        if (!mark_row[row][i] && !mark_col[col][i] && !mark_block[GetBlockNum(row, col)][i])
+        {
+            sudoku_ques[row][col] = i + 1;
+            SetMark(row, col, sudoku_ques[row][col], 1);
+            if (DFS(depth + 1)) return true;
+            SetMark(row, col, sudoku_ques[row][col], 0);
+            sudoku_ques[row][col] = 0;
+        }
+    }
+    return false;
+}
+
+void Swap(int* a, int* b)
+{
+    int temp[3];
+    temp[0] = a[0];
+    temp[1] = a[1];
+    temp[2] = a[2];
+    a[0] = b[0];
+    a[1] = b[1];
+    a[2] = b[2];
+    b[0] = temp[0];
+    b[1] = temp[1];
+    b[2] = temp[2];
+    return;
+}
+
+inline int GetBlockNum(int row, int col)
+{
+    return (row / 3) * 3 + (col / 3);
+}
+
+int GetMax(int row_num, int col_num, int block_num)
+{
+    int temp = row_num > col_num ? row_num : col_num;
+    return temp > block_num ? temp : block_num;
+}
 
 
 // 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
